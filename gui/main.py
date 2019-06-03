@@ -3,6 +3,8 @@ from tkinter.scrolledtext import ScrolledText
 from tkinter.simpledialog import Dialog
 
 from .testcase import TestcaseView
+from .result import ResultView
+from tester import test_list
 
 
 class MainView(tk.Frame):
@@ -37,4 +39,9 @@ class MainView(tk.Frame):
 
     def cb_submit(self):
         source = self.source_input.get("1.0", tk.END)
-        print(source)
+        result = [(testcase[0],) + ret for testcase, ret in
+                  zip(self.testcases,
+                      test_list(source, 1., 0, self.testcases, "strip"))]
+        #result = [(f"in#{i}", "AC", 0.123456789012, f"err#{i}")
+        #          for i in range(10)]
+        ResultView(result)
