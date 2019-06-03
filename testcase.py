@@ -6,11 +6,18 @@ TestCase = namedtuple("TestCase", ("fin", "fout"))
 
 
 class TestCaseList(UserList):
-    def inputs(self):
-        return (i for i, _ in self.data)
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.time_limit = 1.
+        self.mem_size = 0
+        self.strip_output = True
 
-    def answers(self):
-        return (i for _, i in self.data)
+    def copy(self):
+        ins = super().copy()
+        ins.time_limit = self.time_limit
+        ins.mem_size = self.mem_size
+        ins.strip_output = self.strip_output
+        return ins
 
     def set_fin(self, p, v):
         self.data[p] = self.data[p]._replace(fin=v)

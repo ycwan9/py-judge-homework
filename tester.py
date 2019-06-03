@@ -50,8 +50,10 @@ def test(args, time_limit, mem_size,
                     lambda f: checker(f, answer_name))
 
 
-def test_list(code_str, time_limit, mem_size,
-              testcases: testcase.TestCaseList, checker_type):
+def test_list(code_str, testcases: testcase.TestCaseList):
+    time_limit = testcases.time_limit
+    mem_size = testcases.mem_size
+    checker_type = "strip" if testcases.strip_output else "strict"
     with NamedTemporaryFile("w", prefix="runner_", suffix=".py") as fsource:
         fsource.write(code_str)
         fsource.flush()

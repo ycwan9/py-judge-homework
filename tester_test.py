@@ -1,5 +1,6 @@
 import unittest
 import logging
+import os
 
 import tester
 import testcase
@@ -21,7 +22,8 @@ def get_progs(exp, group_num):
 class TesterTest(unittest.TestCase):
     def setUp(self):
         logging.basicConfig()
-        logging.getLogger().setLevel(logging.DEBUG)
+        if os.getenv("DEBUG_LOGGER", False):
+            logging.getLogger().setLevel(logging.DEBUG)
 
     def test_strip(self):
         for fname, out_prefix in get_progs(r"(strip_\w+).in", 2):
@@ -46,6 +48,5 @@ class TesterTest(unittest.TestCase):
                                "test_codes/prog_AC.out")
         with open("test_codes/prog_AC.py") as f:
             source_str = f.read()
-            for ret, *_ in tester.test_list(source_str, 1., 0,
-                                            testcases, "strip"):
+            for ret, *_ in tester.test_list(source_str, testcases):
                 self.assertEqual(ret, "AC")

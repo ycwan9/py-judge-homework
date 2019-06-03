@@ -12,6 +12,5 @@ if __name__ == "__main__":
         logging.getLogger().setLevel(logging.DEBUG)
     root = tk.Tk()
     testcases = TestCaseList()
-    testcases.add_case("a", "b")
     app = MainView(root, testcases)
     app.mainloop()
