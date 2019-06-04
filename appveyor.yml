@@ -1,0 +1,11 @@
+image:
+  - Visual Studio 2017
+
+build: off
+
+install:
+  - pip3 install pywin32
+
+test_script:
+  - python3 -m unittest discover
+
