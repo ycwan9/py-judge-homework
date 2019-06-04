@@ -17,7 +17,9 @@ class ResultView(Dialog):
         self.resultdetail = ScrolledText(master)
         self.resultdetail.grid(row=1, column=0)
         for case_name, ret, time_len, err_msg in self.test_result:
+            item_color = "blue" if ret == "AC" else "red"
             self.resultlist.insert(tk.END, f"{case_name} {ret} {time_len}")
+            self.resultlist.itemconfigure(tk.END, fg=item_color)
 
     def cb_list(self, event):
         selection = event.widget.curselection()
