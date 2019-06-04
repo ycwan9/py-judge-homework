@@ -3,12 +3,13 @@ import multiprocessing as mp
 from tempfile import NamedTemporaryFile
 import logging
 import os
-import signal
 import time
 from itertools import zip_longest
 from sys import executable
 import py_compile
 import traceback
+import sys
+
 
 import testcase
 
@@ -22,32 +23,52 @@ RESULTS = {
     "MLE": "Memory Limit Exceeded",
     "": ""}
 _logger = logging.getLogger("tester")
+_mswindows = (sys.platform == "win32")
 
 
 def proc(args, time_limit, mem_size, start_time,
          _stdin_name, _stdout_name, _stderr_name):
     if mem_size:
         try:
-            import resource
-            resource.setrlimit(resource.RLIMIT_DATA, (mem_size, mem_size))
-        except ImportError:
-            # Windows
-            try:
+            if _mswindows:
                 import win32api
                 import win32job
                 job = win32job.CreateJobObject(None, "judge_mem_limiter")
                 win32job.SetInformationJobObject(
                     job,
                     win32job.JobObjectExtendedLimitInformation,
-                    {"ProcessMemoryLimit": mem_size})
+                    {
+                        "BasicLimitInformation": {
+                            "PerProcessUserTimeLimit": 0,
+                            "PerJobUserTimeLimit": 0,
+                            "LimitFlags":
+                            win32job.JOB_OBJECT_LIMIT_PROCESS_MEMORY,
+                            "MinimumWorkingSetSize": 0,
+                            "MaximumWorkingSetSize": 0,
+                            "ActiveProcessLimit": 0,
+                            "Affinity": 0,
+                            "PriorityClass": 0,
+                            "SchedulingClass": 0
+                        },
+                        "IoInfo": 0,
+                        "JobMemoryLimit": 0,
+                        "PeakProcessMemoryUsed": 0,
+                        "PeakJobMemoryUsed": 0,
+                        "ProcessMemoryLimit": mem_size})
                 win32job.AssignProcessToJobObject(
                     job, win32api.GetCurrentProcess())
-            except:
-                _logger.error("unable to set memory limit under win32: %s",
-                              traceback.format_exc())
-    _stdin_no = os.open(_stdin_name, os.O_RDONLY)
-    _stdout_no = os.open(_stdout_name, os.O_WRONLY)
-    _stderr_no = os.open(_stderr_name, os.O_WRONLY)
+            else:
+                import resource
+                resource.setrlimit(resource.RLIMIT_DATA, (mem_size, mem_size))
+        except:
+            _logger.error("unable to set memory limit under win32: %s",
+                          traceback.format_exc())
+    flags = 0
+    if _mswindows:
+        flags = os.O_TEMPORARY
+    _stdin_no = os.open(_stdin_name, os.O_RDONLY | flags)
+    _stdout_no = os.open(_stdout_name, os.O_WRONLY | flags)
+    _stderr_no = os.open(_stderr_name, os.O_WRONLY | flags)
     os.dup2(_stdin_no, 0)
     os.dup2(_stdout_no, 1)
     os.dup2(_stderr_no, 2)
@@ -58,7 +79,7 @@ def proc(args, time_limit, mem_size, start_time,
 def watchdog(time_limit, pid):
     """kill pid after time_limit"""
     time.sleep(time_limit)
-    os.kill(pid, signal.SIGKILL)
+    os.kill(pid, 9)
 
 
 def test(args, time_limit, mem_size, ignore_space, ignore_return,
