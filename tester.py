@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import multiprocessing as mp
-from tempfile import TemporaryDirectory, NamedTemporaryFile
+from tempfile import NamedTemporaryFile
 import logging
 import os
 import time
@@ -70,7 +70,7 @@ def proc(args, time_limit, mem_size, start_time, _stdin_name,
         except:
             _logger.error("unable to set memory limit under win32: %s",
                           traceback.format_exc())
-    flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY
+    flags = os.O_TRUNC | os.O_WRONLY
     if _mswindows:
         flags |= os.O_TEMPORARY
     _stdin_no = os.open(_stdin_name, os.O_RDONLY)
@@ -119,15 +119,24 @@ def test_list(code_str, testcases: testcase.TestCaseList):
 
 def run_test(args, time_limit, mem_size, stdin_name, out_checker):
     logger = _logger.getChild(f"test_{args[0]}")
+    result = ""
+    time_elapsed = .0
+    err_msg = ""
     start_time = mp.Value("d")
     start_time.value = 0
-    with TemporaryDirectory() as dirname:
-        logger.debug("redirecting to %s", dirname)
-        stdout_name = os.path.join(dirname, "stdout")
-        stderr_name = os.path.join(dirname, "stderr")
+    try:
+        fout = NamedTemporaryFile(prefix="runner_stdout", delete=False)
+        ferr = NamedTemporaryFile(prefix="runner_stderr", delete=False)
+        stdout_name = fout.name
+        stderr_name = ferr.name
+        logger.debug("redirecting stdout to %s", stdout_name)
+        logger.debug("redirecting stderr to %s", stderr_name)
         test_proc = mp.Process(target=proc,
                                args=(args, time_limit, mem_size, start_time,
                                      stdin_name, stdout_name, stderr_name))
+        if _mswindows:
+            fout.close()
+            ferr.close()
         test_proc.start()
         watch_proc = mp.Process(target=watchdog,
                                 args=(time_limit + 1., test_proc.pid))
@@ -138,24 +147,31 @@ def run_test(args, time_limit, mem_size, stdin_name, out_checker):
             pass
         end_time = time.perf_counter()
         watch_proc.terminate()
+        if _mswindows:
+            fout = open(stdout_name, "rb")
+            ferr = open(stderr_name, "rb")
         logger.debug("process %s end with %s", args, exit_status)
         time_elapsed = end_time - start_time.value
         logger.debug("start: %f, end: %f, time: %f",
                      start_time.value, end_time, time_elapsed)
-        if time_elapsed > time_limit:
-            logger.debug("result: TLE")
-            return "TLE", time_elapsed, ""
         err_msg = ""
-        if exit_status == 0:
-            with open(stdout_name, "rb") as fout:
-                result = "AC" if out_checker(fout) else "WA"
+        if time_elapsed > time_limit:
+            result = "TLE"
+        elif exit_status == 0:
+            result = "AC" if out_checker(fout) else "WA"
         else:
-            with open(stderr_name, "rb") as ferr:
-                err_msg = ferr.read()
+            err_msg = ferr.read()
             logger.debug("stderr: %s", err_msg)
             result = parse_err(err_msg)
         logger.debug("result: %s", result)
-        return result, time_elapsed, err_msg
+    except:
+        logger.error("err: %s", traceback.format_exc())
+    finally:
+        fout.close()
+        ferr.close()
+        os.remove(stdout_name)
+        os.remove(stderr_name)
+    return result, time_elapsed, err_msg
 
 
 def check(fout, ans, ignore_space, ignore_return):
