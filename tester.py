@@ -36,24 +36,16 @@ def watchdog(time_limit, pid):
     os.kill(pid, signal.SIGKILL)
 
 
-def test(args, time_limit, mem_size,
-         input_name, answer_name, checker_type):
+def test(args, time_limit, mem_size, ignore_space, ignore_return,
+         input_name, answer_name):
     time_limit = float(time_limit)
     mem_size = int(mem_size)
-    if checker_type == "strict":
-        checker = strict_checker
-    elif checker_type == "strip":
-        checker = strip_checker
-    else:
-        raise NotImplementedError(f"Unsupported checker {checker_type}")
     return run_test(args, time_limit, mem_size, input_name,
-                    lambda f: checker(f, answer_name))
+                    lambda f: check(f, answer_name,
+                                    ignore_space, ignore_return))
 
 
 def test_list(code_str, testcases: testcase.TestCaseList):
-    time_limit = testcases.time_limit
-    mem_size = testcases.mem_size
-    checker_type = "strip" if testcases.strip_output else "strict"
     with NamedTemporaryFile("w", prefix="runner_", suffix=".py") as fsource:
         fsource.write(code_str)
         fsource.flush()
@@ -65,8 +57,10 @@ def test_list(code_str, testcases: testcase.TestCaseList):
             yield "CE", 0., err_msg
         else:
             for input_name, answer_name in testcases:
-                yield test([executable, fsource.name], time_limit, mem_size,
-                           input_name, answer_name, checker_type)
+                yield test([executable, fsource.name],
+                           testcases.time_limit, testcases.mem_size,
+                           testcases.ignore_space, testcases.ignore_return,
+                           input_name, answer_name)
 
 
 def run_test(args, time_limit, mem_size, stdin_name, out_checker):
@@ -105,27 +99,31 @@ def run_test(args, time_limit, mem_size, stdin_name, out_checker):
         return result, time_elapsed, err_msg
 
 
-def strict_checker(fout, ans):
+def check(fout, ans, ignore_space, ignore_return):
+    ignore_chars = b"\r\n"
+    if ignore_space:
+        ignore_chars += b"\t "
+    blank_val = b"" if ignore_return else b"\n__invalid__"
     with open(ans, "rb") as fans:
-        for line_out, line_ans in zip_longest(fout, fans, fillvalue=None):
-            # remove different types of line ending
-            if line_out.rstrip(b"\r\n") != line_ans.strip(b"\r\n"):
-                return False
-    return True
-
-
-def strip_checker(fout, ans):
-    ignore_chars = b" \r\n\t"
-    with open(ans, "rb") as fans:
-        for line_out, line_ans in zip_longest(fout, fans, fillvalue=b""):
+        for line_out, line_ans in zip_longest(fout, fans, fillvalue=blank_val):
             if line_out.rstrip(ignore_chars) != line_ans.strip(ignore_chars):
                 return False
     return True
 
 
 def parse_err(err_msg):
-    if err_msg.find(b"\nMemoryError\n") != -1:
-        return "MLE"
+    try:
+        *_, err_line = filter(bool, err_msg.split(b"\n"))
+        err_type = err_line.split(b":")[0]
+        ret = {
+            b"MemoryError": "MLE",
+            b"SyntaxError": "CE",
+            b"NameError": "CE"
+        }.get(err_type)
+        if ret:
+            return ret
+    except IndexError:
+        pass
     return "RE"
 
 

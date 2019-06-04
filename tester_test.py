@@ -28,17 +28,26 @@ class TesterTest(unittest.TestCase):
     def test_strip(self):
         for fname, out_prefix in get_progs(r"(strip_\w+).in", 2):
             with self.subTest(name=fname):
-                ret, *_ = tester.test(["cat"], 1., 0,
+                ret, *_ = tester.test(["cat"], 1., 0, True, True,
                                       f"test_codes/{fname}",
-                                      f"test_codes/{out_prefix}.out", "strip")
+                                      f"test_codes/{out_prefix}.out")
                 self.assertEqual(ret, "AC")
+
+    def test_strip_neg(self):
+        for fname, out_prefix in get_progs(r"(strip_\w+).in", 2):
+            with self.subTest(name=fname):
+                ret, *_ = tester.test(["cat"], 1., 0, False, False,
+                                      f"test_codes/{fname}",
+                                      f"test_codes/{out_prefix}.out")
+                self.assertEqual(ret, "WA")
 
     def test_strict(self):
         for _, fname, expected_ret in get_progs(r"(prog\w*_([A-Z]+)).py", 3):
             with self.subTest(name=fname):
                 prefix = f"test_codes/{fname}"
-                ret, *_ = tester.test(["python3", prefix+".py"], 1., 16*1024**2,
-                                    prefix+".in", prefix+".out", "strict")
+                ret, *_ = tester.test(["python3", prefix+".py"], 1.,
+                                      16*1024**2, False, False, prefix+".in",
+                                      prefix+".out")
                 self.assertEqual(ret, expected_ret)
 
     def test_list(self):

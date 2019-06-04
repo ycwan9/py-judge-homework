@@ -10,13 +10,15 @@ class TestCaseList(UserList):
         super().__init__(*args)
         self.time_limit = 1.
         self.mem_size = 0
-        self.strip_output = True
+        self.ignore_space = True
+        self.ignore_return = True
 
     def copy(self):
         ins = super().copy()
         ins.time_limit = self.time_limit
         ins.mem_size = self.mem_size
-        ins.strip_output = self.strip_output
+        ins.ignore_space = self.ignore_space
+        ins.ignore_return = self.ignore_return
         return ins
 
     def set_fin(self, p, v):

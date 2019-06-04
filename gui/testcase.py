@@ -12,10 +12,8 @@ class TestcaseView(Dialog):
         super().__init__(tk._default_root, "Select Testcases")
 
     def apply(self):
-        try:
-            self.testcases.strip_output = bool(self.strip_v.get())
-        except ValueError:
-            pass
+        self.testcases.ignore_space = bool(self.space_v.get())
+        self.testcases.ignore_return = bool(self.return_v.get())
         try:
             self.testcases.mem_size = int(self.mem_t.get())
         except ValueError:
@@ -38,8 +36,8 @@ class TestcaseView(Dialog):
         self.anslist.grid(row=0, column=1, sticky=tk.N+tk.W+tk.S+tk.E)
         self.delbtnlist = tk.Listbox(self.table_frame, width=2)
         self.delbtnlist.grid(row=0, column=2, sticky=tk.N+tk.W+tk.S+tk.E)
-        self.inputlist.insert(0, "add...")
-        self.anslist.insert(0, "add...")
+        self.inputlist.insert(0, "[add...]")
+        self.anslist.insert(0, "[add...]")
         self.delbtnlist.insert(0, "  ")
         self.inputlist.bind("<<ListboxSelect>>", self.cb_list)
         self.anslist.bind("<<ListboxSelect>>", self.cb_list)
@@ -59,11 +57,16 @@ class TestcaseView(Dialog):
         self.time_t = tk.Entry(self.conf_box)
         self.time_t.insert(0, str(self.testcases.time_limit))
         self.time_t.grid(row=1, column=1)
-        self.strip_v = tk.IntVar()
-        self.strip_v.set(int(self.testcases.strip_output))
-        self.strip_t = tk.Checkbutton(self.conf_box, text="strip output",
-                                      variable=self.strip_v)
-        self.strip_t.grid(row=2, column=0)
+        self.space_v = tk.IntVar()
+        self.space_v.set(int(self.testcases.ignore_space))
+        self.space_t = tk.Checkbutton(self.conf_box, text="ignore space",
+                                      variable=self.space_v)
+        self.space_t.grid(row=2, column=0)
+        self.return_v = tk.IntVar()
+        self.return_v.set(int(self.testcases.ignore_return))
+        self.return_t = tk.Checkbutton(self.conf_box, text="ignore return",
+                                       variable=self.return_v)
+        self.return_t.grid(row=2, column=1)
         self.conf_box.pack()
 
     def update(self):

@@ -14,7 +14,7 @@ class ResultView(Dialog):
         self.resultlist = tk.Listbox(master)
         self.resultlist.grid(row=0, column=0, sticky=tk.W+tk.E)
         self.resultlist.bind("<<ListboxSelect>>", self.cb_list)
-        self.resultdetail = ScrolledText(master)
+        self.resultdetail = ScrolledText(master, state=tk.DISABLED)
         self.resultdetail.grid(row=1, column=0)
         for case_name, ret, time_len, err_msg in self.test_result:
             item_color = "blue" if ret == "AC" else "red"
@@ -27,7 +27,7 @@ class ResultView(Dialog):
             return
         pos = selection[0]
         *_, err_msg = self.test_result[pos]
+        self.resultdetail.config(state=tk.NORMAL)
         self.resultdetail.delete("1.0", tk.END)
         self.resultdetail.insert("1.0", err_msg)
-
-
+        self.resultdetail.config(state=tk.DISABLED)
