@@ -27,8 +27,24 @@ _logger = logging.getLogger("tester")
 def proc(args, time_limit, mem_size, start_time,
          _stdin_name, _stdout_name, _stderr_name):
     if mem_size:
-        import resource
-        resource.setrlimit(resource.RLIMIT_DATA, (mem_size, mem_size))
+        try:
+            import resource
+            resource.setrlimit(resource.RLIMIT_DATA, (mem_size, mem_size))
+        except ImportError:
+            # Windows
+            try:
+                import win32api
+                import win32job
+                job = win32job.CreateJobObject(None, "judge_mem_limiter")
+                win32job.SetInformationJobObject(
+                    job,
+                    win32job.JobObjectExtendedLimitInformation,
+                    {"ProcessMemoryLimit": mem_size})
+                win32job.AssignProcessToJobObject(
+                    job, win32api.GetCurrentProcess())
+            except:
+                _logger.error("unable to set memory limit under win32: %s",
+                              traceback.format_exc())
     _stdin_no = os.open(_stdin_name, os.O_RDONLY)
     _stdout_no = os.open(_stdout_name, os.O_WRONLY)
     _stderr_no = os.open(_stderr_name, os.O_WRONLY)
