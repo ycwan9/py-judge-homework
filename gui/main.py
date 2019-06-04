@@ -44,7 +44,6 @@ class MainView(tk.Frame):
         window = TestcaseView(testcases)
         if window.is_ok:
             self.testcases = window.testcases
-            print(self.testcases)
 
     def cb_submit(self):
         source = self.source_input.get("1.0", tk.END)

@@ -39,9 +39,12 @@ class TestcaseView(Dialog):
         self.inputlist.insert(0, "[add...]")
         self.anslist.insert(0, "[add...]")
         self.delbtnlist.insert(0, "  ")
-        self.inputlist.bind("<<ListboxSelect>>", self.cb_list)
-        self.anslist.bind("<<ListboxSelect>>", self.cb_list)
-        self.delbtnlist.bind("<<ListboxSelect>>", self.cb_list)
+        _disable_scroll = lambda x: "break"
+        for listbox in (self.inputlist, self.anslist, self.delbtnlist):
+            listbox.bind("<<ListboxSelect>>", self.cb_list)
+            listbox.bind("<MouseWheel>", _disable_scroll)
+            listbox.bind("<Button-4>", _disable_scroll)
+            listbox.bind("<Button-5>", _disable_scroll)
         self.draw_conf(master)
         self.update()
 
