@@ -12,6 +12,15 @@ import traceback
 
 import testcase
 
+
+RESULTS = {
+    "AC": "Accepted",
+    "WA": "Wrong Answer",
+    "RE": "Runtime Error",
+    "CE": "Compile Error",
+    "TLE": "Time Limit Exceeded",
+    "MLE": "Memory Limit Exceeded",
+    "": ""}
 _logger = logging.getLogger("tester")
 
 

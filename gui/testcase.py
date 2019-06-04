@@ -25,11 +25,12 @@ class TestcaseView(Dialog):
         self.is_ok = True
 
     def body(self, master):
+        master.pack(fill=tk.BOTH)
         self.table_frame = tk.Frame(master)
         self.table_frame.rowconfigure(1, weight=1)
         for n, w in enumerate([10, 10, 1]):
             self.table_frame.columnconfigure(n, weight=w)
-        self.table_frame.pack()
+        self.table_frame.pack(fill=tk.BOTH)
         self.inputlist = tk.Listbox(self.table_frame)
         self.inputlist.grid(row=0, column=0, sticky=tk.N+tk.W+tk.S+tk.E)
         self.anslist = tk.Listbox(self.table_frame)
@@ -70,7 +71,7 @@ class TestcaseView(Dialog):
         self.return_t = tk.Checkbutton(self.conf_box, text="ignore return",
                                        variable=self.return_v)
         self.return_t.grid(row=2, column=1)
-        self.conf_box.pack()
+        self.conf_box.pack(fill=tk.BOTH)
 
     def update(self):
         self.inputlist.delete(1, tk.END)

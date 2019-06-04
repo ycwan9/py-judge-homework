@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter.simpledialog import Dialog
 from tkinter.scrolledtext import ScrolledText
 
+from tester import RESULTS
+
 
 class ResultView(Dialog):
     """configure test cases"""
@@ -11,11 +13,12 @@ class ResultView(Dialog):
         super().__init__(tk._default_root, "Test Result")
 
     def body(self, master):
+        master.pack(fill=tk.BOTH)
         self.resultlist = tk.Listbox(master)
-        self.resultlist.grid(row=0, column=0, sticky=tk.W+tk.E)
+        self.resultlist.pack(fill=tk.BOTH)
         self.resultlist.bind("<<ListboxSelect>>", self.cb_list)
         self.resultdetail = ScrolledText(master, state=tk.DISABLED)
-        self.resultdetail.grid(row=1, column=0)
+        self.resultdetail.pack(fill=tk.BOTH)
         for case_name, ret, time_len, err_msg in self.test_result:
             item_color = "blue" if ret == "AC" else "red"
             self.resultlist.insert(tk.END, f"{case_name} {ret} {time_len}")
@@ -26,8 +29,13 @@ class ResultView(Dialog):
         if not selection:
             return
         pos = selection[0]
-        *_, err_msg = self.test_result[pos]
+        case_name, ret, time_len, err_msg = self.test_result[pos]
+        detail = f"""\
+Result:\t{RESULTS[ret]}
+Time:\t{time_len} s
+Input:\t{case_name}
+{err_msg}"""
         self.resultdetail.config(state=tk.NORMAL)
         self.resultdetail.delete("1.0", tk.END)
-        self.resultdetail.insert("1.0", err_msg)
+        self.resultdetail.insert("1.0", detail)
         self.resultdetail.config(state=tk.DISABLED)
