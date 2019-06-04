@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import multiprocessing as mp
-from tempfile import NamedTemporaryFile
+from tempfile import TemporaryDirectory, NamedTemporaryFile
 import logging
 import os
 import time
@@ -26,8 +26,8 @@ _logger = logging.getLogger("tester")
 _mswindows = (sys.platform == "win32")
 
 
-def proc(args, time_limit, mem_size, start_time,
-         _stdin_name, _stdout_name, _stderr_name):
+def proc(args, time_limit, mem_size, start_time, _stdin_name,
+         _stdout_name, _stderr_name):
     if mem_size:
         try:
             if _mswindows:
@@ -70,10 +70,10 @@ def proc(args, time_limit, mem_size, start_time,
         except:
             _logger.error("unable to set memory limit under win32: %s",
                           traceback.format_exc())
-    flags = 0
+    flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY
     if _mswindows:
-        flags = os.O_TEMPORARY
-    _stdin_no = os.open(_stdin_name, os.O_RDONLY | flags)
+        flags |= os.O_TEMPORARY
+    _stdin_no = os.open(_stdin_name, os.O_RDONLY)
     _stdout_no = os.open(_stdout_name, os.O_WRONLY | flags)
     _stderr_no = os.open(_stderr_name, os.O_WRONLY | flags)
     os.dup2(_stdin_no, 0)
@@ -103,7 +103,7 @@ def test_list(code_str, testcases: testcase.TestCaseList):
         fsource.write(code_str)
         fsource.flush()
         try:
-            py_compile.compile(fsource.name)
+            cfile = py_compile.compile(fsource.name)
         except:
             err_msg = traceback.format_exc()
             _logger.debug("compile error: %s", err_msg)
@@ -114,24 +114,28 @@ def test_list(code_str, testcases: testcase.TestCaseList):
                            testcases.time_limit, testcases.mem_size,
                            testcases.ignore_space, testcases.ignore_return,
                            input_name, answer_name)
+            os.remove(cfile)
 
 
 def run_test(args, time_limit, mem_size, stdin_name, out_checker):
     logger = _logger.getChild(f"test_{args[0]}")
     start_time = mp.Value("d")
     start_time.value = 0
-    with NamedTemporaryFile(prefix="runner_stdout") as fout,\
-            NamedTemporaryFile(prefix="runner_stderr") as ferr:
-        logger.debug("redirecting stdout to %s", fout.name)
-        logger.debug("redirecting stderr to %s", ferr.name)
+    with TemporaryDirectory() as dirname:
+        logger.debug("redirecting to %s", dirname)
+        stdout_name = os.path.join(dirname, "stdout")
+        stderr_name = os.path.join(dirname, "stderr")
         test_proc = mp.Process(target=proc,
                                args=(args, time_limit, mem_size, start_time,
-                                     stdin_name, fout.name, ferr.name))
+                                     stdin_name, stdout_name, stderr_name))
         test_proc.start()
         watch_proc = mp.Process(target=watchdog,
                                 args=(time_limit + 1., test_proc.pid))
         watch_proc.start()
-        _, exit_status = os.waitpid(test_proc.pid, 0)
+        try:
+            _, exit_status = os.waitpid(test_proc.pid, 0)
+        except ChildProcessError:
+            pass
         end_time = time.perf_counter()
         watch_proc.terminate()
         logger.debug("process %s end with %s", args, exit_status)
@@ -143,9 +147,11 @@ def run_test(args, time_limit, mem_size, stdin_name, out_checker):
             return "TLE", time_elapsed, ""
         err_msg = ""
         if exit_status == 0:
-            result = "AC" if out_checker(fout) else "WA"
+            with open(stdout_name, "rb") as fout:
+                result = "AC" if out_checker(fout) else "WA"
         else:
-            err_msg = ferr.read()
+            with open(stderr_name, "rb") as ferr:
+                err_msg = ferr.read()
             logger.debug("stderr: %s", err_msg)
             result = parse_err(err_msg)
         logger.debug("result: %s", result)
