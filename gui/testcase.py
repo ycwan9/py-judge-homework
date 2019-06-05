@@ -9,7 +9,7 @@ class TestcaseView(Dialog):
     def __init__(self, testcases):
         self.testcases = testcases
         self.is_ok = False
-        super().__init__(tk._default_root, "Select Testcases")
+        super().__init__(tk._default_root, "测试点")
 
     def apply(self):
         self.testcases.ignore_space = bool(self.space_v.get())
@@ -51,9 +51,9 @@ class TestcaseView(Dialog):
 
     def draw_conf(self, master):
         self.conf_box = tk.Frame(master)
-        self.mem_l = tk.Label(self.conf_box, text="memory limit")
+        self.mem_l = tk.Label(self.conf_box, text="内存限制 (byte)")
         self.mem_l.grid(row=0, column=0)
-        self.time_l = tk.Label(self.conf_box, text="time limit")
+        self.time_l = tk.Label(self.conf_box, text="时间限制 (s)")
         self.time_l.grid(row=1, column=0)
         self.mem_t = tk.Entry(self.conf_box)
         self.mem_t.insert(0, str(self.testcases.mem_size))
@@ -63,12 +63,12 @@ class TestcaseView(Dialog):
         self.time_t.grid(row=1, column=1)
         self.space_v = tk.IntVar()
         self.space_v.set(int(self.testcases.ignore_space))
-        self.space_t = tk.Checkbutton(self.conf_box, text="ignore space",
+        self.space_t = tk.Checkbutton(self.conf_box, text="忽略行末空格",
                                       variable=self.space_v)
         self.space_t.grid(row=2, column=0)
         self.return_v = tk.IntVar()
         self.return_v.set(int(self.testcases.ignore_return))
-        self.return_t = tk.Checkbutton(self.conf_box, text="ignore return",
+        self.return_t = tk.Checkbutton(self.conf_box, text="忽略空行",
                                        variable=self.return_v)
         self.return_t.grid(row=2, column=1)
         self.conf_box.pack(fill=tk.BOTH)

@@ -10,7 +10,7 @@ class ResultView(Dialog):
 
     def __init__(self, test_result):
         self.test_result = test_result
-        super().__init__(tk._default_root, "Test Result")
+        super().__init__(tk._default_root, "评测结果")
 
     def body(self, master):
         master.pack(fill=tk.BOTH)
@@ -31,9 +31,9 @@ class ResultView(Dialog):
         pos = selection[0]
         case_name, ret, time_len, err_msg = self.test_result[pos]
         detail = f"""\
-Result:\t{RESULTS[ret]}
-Time:\t{time_len} s
-Input:\t{case_name}
+结果:\t{RESULTS[ret]}
+时间:\t{time_len} s
+测试点:\t{case_name}
 {err_msg}"""
         self.resultdetail.config(state=tk.NORMAL)
         self.resultdetail.delete("1.0", tk.END)
