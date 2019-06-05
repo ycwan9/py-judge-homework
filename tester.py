@@ -154,7 +154,7 @@ def run_test(args, time_limit, mem_size, stdin_name, out_checker):
         time_elapsed = end_time - start_time.value
         logger.debug("start: %f, end: %f, time: %f",
                      start_time.value, end_time, time_elapsed)
-        err_msg = ""
+        err_msg = b""
         if time_elapsed > time_limit:
             result = "TLE"
         elif exit_status == 0:
@@ -171,7 +171,7 @@ def run_test(args, time_limit, mem_size, stdin_name, out_checker):
         ferr.close()
         os.remove(stdout_name)
         os.remove(stderr_name)
-    return result, time_elapsed, err_msg
+    return result, time_elapsed, err_msg.decode()
 
 
 def check(fout, ans, ignore_space, ignore_return):
