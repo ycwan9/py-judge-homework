@@ -13,5 +13,6 @@ install:
   - "%PYTHON%\\python.exe -m pip install pywin32"
 
 test_script:
+  - type .\test_codes\prog_AC.out
   - "%PYTHON%\\python.exe -m unittest discover"
 
