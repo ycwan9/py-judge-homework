@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import multiprocessing as mp
-from tempfile import NamedTemporaryFile
+from tempfile import TemporaryDirectory, NamedTemporaryFile
 import logging
 import os
 import time
@@ -9,6 +9,7 @@ from sys import executable
 import py_compile
 import traceback
 import sys
+import subprocess
 
 
 import testcase
@@ -26,7 +27,7 @@ _logger = logging.getLogger("tester")
 _mswindows = (sys.platform == "win32")
 
 
-def proc(args, time_limit, mem_size, start_time, _stdin_name,
+def proc(args, time_limit, mem_size, time_elapsed, return_val, _stdin_name,
          _stdout_name, _stderr_name):
     if mem_size:
         try:
@@ -70,23 +71,20 @@ def proc(args, time_limit, mem_size, start_time, _stdin_name,
         except:
             _logger.error("unable to set memory limit under win32: %s",
                           traceback.format_exc())
-    flags = os.O_TRUNC | os.O_WRONLY
-    if _mswindows:
-        flags |= os.O_TEMPORARY
-    _stdin_no = os.open(_stdin_name, os.O_RDONLY)
-    _stdout_no = os.open(_stdout_name, os.O_WRONLY | flags)
-    _stderr_no = os.open(_stderr_name, os.O_WRONLY | flags)
-    os.dup2(_stdin_no, 0)
-    os.dup2(_stdout_no, 1)
-    os.dup2(_stderr_no, 2)
-    start_time.value = time.perf_counter()
-    os.execvp(args[0], args)
-
-
-def watchdog(time_limit, pid):
-    """kill pid after time_limit"""
-    time.sleep(time_limit)
-    os.kill(pid, 9)
+    with open(_stdin_name, "rb") as stdin,\
+            open(_stdout_name, "wb") as stdout,\
+            open(_stderr_name, "wb") as stderr:
+        proc = subprocess.Popen(args, stdin=stdin,
+                                stdout=stdout, stderr=stderr)
+        t_start = time.perf_counter()
+        try:
+            proc.wait(timeout=time_limit + 1.)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.returncode = -1
+        t_end = time.perf_counter()
+        time_elapsed.value = t_end - t_start
+        return_val.value = proc.returncode
 
 
 def test(args, time_limit, mem_size, ignore_space, ignore_return,
@@ -99,22 +97,24 @@ def test(args, time_limit, mem_size, ignore_space, ignore_return,
 
 
 def test_list(code_str, testcases: testcase.TestCaseList):
-    with NamedTemporaryFile("w", prefix="runner_", suffix=".py") as fsource:
+    with NamedTemporaryFile("w", prefix="runner_", suffix=".py", delete=False) as fsource:
         fsource.write(code_str)
-        fsource.flush()
-        try:
-            cfile = py_compile.compile(fsource.name)
-        except:
-            err_msg = traceback.format_exc()
-            _logger.debug("compile error: %s", err_msg)
-            yield "CE", 0., err_msg
-        else:
-            for input_name, answer_name in testcases:
-                yield test([executable, fsource.name],
-                           testcases.time_limit, testcases.mem_size,
-                           testcases.ignore_space, testcases.ignore_return,
-                           input_name, answer_name)
-            os.remove(cfile)
+        script_name = fsource.name
+    try:
+        cfile = py_compile.compile(script_name)
+    except:
+        err_msg = traceback.format_exc()
+        _logger.debug("compile error: %s", err_msg)
+        yield "CE", 0., err_msg
+    else:
+        for input_name, answer_name in testcases:
+            yield test([executable, script_name],
+                       testcases.time_limit, testcases.mem_size,
+                       testcases.ignore_space, testcases.ignore_return,
+                       input_name, answer_name)
+        os.remove(cfile)
+    finally:
+        os.remove(script_name)
 
 
 def run_test(args, time_limit, mem_size, stdin_name, out_checker):
@@ -122,56 +122,37 @@ def run_test(args, time_limit, mem_size, stdin_name, out_checker):
     result = ""
     time_elapsed = .0
     err_msg = ""
-    start_time = mp.Value("d")
-    start_time.value = 0
-    try:
-        fout = NamedTemporaryFile(prefix="runner_stdout", delete=False)
-        ferr = NamedTemporaryFile(prefix="runner_stderr", delete=False)
-        stdout_name = fout.name
-        stderr_name = ferr.name
+    mp_time = mp.Value("d")
+    mp_return = mp.Value("i")
+    with TemporaryDirectory() as dirname:
+        logger.debug("redirecting to %s", dirname)
+        stdout_name = os.path.join(dirname, "stdout")
+        stderr_name = os.path.join(dirname, "stderr")
         logger.debug("redirecting stdout to %s", stdout_name)
         logger.debug("redirecting stderr to %s", stderr_name)
+        for fn in stdout_name, stderr_name:
+            open(fn, "a").close()
         test_proc = mp.Process(target=proc,
-                               args=(args, time_limit, mem_size, start_time,
+                               args=(args, time_limit, mem_size, mp_time, mp_return,
                                      stdin_name, stdout_name, stderr_name))
-        if _mswindows:
-            fout.close()
-            ferr.close()
         test_proc.start()
-        watch_proc = mp.Process(target=watchdog,
-                                args=(time_limit + 1., test_proc.pid))
-        watch_proc.start()
-        try:
-            _, exit_status = os.waitpid(test_proc.pid, 0)
-        except ChildProcessError:
-            pass
-        end_time = time.perf_counter()
-        watch_proc.terminate()
-        if _mswindows:
-            fout = open(stdout_name, "rb")
-            ferr = open(stderr_name, "rb")
+        test_proc.join()
+        exit_status = mp_return.value
+        time_elapsed = mp_time.value
         logger.debug("process %s end with %s", args, exit_status)
-        time_elapsed = end_time - start_time.value
-        logger.debug("start: %f, end: %f, time: %f",
-                     start_time.value, end_time, time_elapsed)
-        err_msg = b""
-        if time_elapsed > time_limit:
-            result = "TLE"
-        elif exit_status == 0:
-            result = "AC" if out_checker(fout) else "WA"
-        else:
+        logger.debug("time: %f", time_elapsed)
+        err_msg = ""
+        with open(stdout_name, "rb") as fout, open(stderr_name, "rb") as ferr:
             err_msg = ferr.read()
             logger.debug("stderr: %s", err_msg)
-            result = parse_err(err_msg)
-        logger.debug("result: %s", result)
-    except:
-        logger.error("err: %s", traceback.format_exc())
-    finally:
-        fout.close()
-        ferr.close()
-        os.remove(stdout_name)
-        os.remove(stderr_name)
-    return result, time_elapsed, err_msg.decode()
+            if time_elapsed > time_limit:
+                result = "TLE"
+            elif exit_status == 0:
+                result = "AC" if out_checker(fout) else "WA"
+            else:
+                result = parse_err(err_msg)
+            logger.debug("result: %s", result)
+    return result, time_elapsed, err_msg
 
 
 def check(fout, ans, ignore_space, ignore_return):
@@ -181,6 +162,7 @@ def check(fout, ans, ignore_space, ignore_return):
     blank_val = b"" if ignore_return else b"\n__invalid__"
     with open(ans, "rb") as fans:
         for line_out, line_ans in zip_longest(fout, fans, fillvalue=blank_val):
+            _logger.debug("parsing line: %s", line_out)
             if line_out.rstrip(ignore_chars) != line_ans.strip(ignore_chars):
                 return False
     return True
@@ -189,7 +171,7 @@ def check(fout, ans, ignore_space, ignore_return):
 def parse_err(err_msg):
     try:
         *_, err_line = filter(bool, err_msg.split(b"\n"))
-        err_type = err_line.split(b":")[0]
+        err_type = err_line.strip(b"\r").split(b":")[0]
         ret = {
             b"MemoryError": "MLE",
             b"SyntaxError": "CE",
@@ -197,7 +179,7 @@ def parse_err(err_msg):
         }.get(err_type)
         if ret:
             return ret
-    except IndexError:
+    except (IndexError, ValueError):
         pass
     return "RE"
 
@@ -209,4 +191,4 @@ if __name__ == "__main__":
     _, time_limit, mem_size, stdin_name, ans_name, *args = argv
     time_limit = float(time_limit)
     mem_size = int(mem_size)
-    print(test(args, time_limit, mem_size, stdin_name, ans_name, "strip"))
+    print(test(args, time_limit, mem_size, True, True, stdin_name, ans_name))

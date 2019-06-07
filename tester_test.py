@@ -1,6 +1,8 @@
 import unittest
 import logging
 import os
+from os.path import sep
+from sys import executable
 
 import tester
 import testcase
@@ -25,27 +27,29 @@ class TesterTest(unittest.TestCase):
         if os.getenv("DEBUG_LOGGER", False):
             logging.getLogger().setLevel(logging.DEBUG)
 
+    @unittest.skipIf(tester._mswindows, "skip MS Windows")
     def test_strip(self):
         for fname, out_prefix in get_progs(r"(strip_\w+).in", 2):
             with self.subTest(name=fname):
                 ret, *_ = tester.test(["cat"], 1., 0, True, True,
-                                      f"test_codes/{fname}",
-                                      f"test_codes/{out_prefix}.out")
+                                      f"test_codes{sep}{fname}",
+                                      f"test_codes{sep}{out_prefix}.out")
                 self.assertEqual(ret, "AC")
 
+    @unittest.skipIf(tester._mswindows, "skip MS Windows")
     def test_strip_neg(self):
         for fname, out_prefix in get_progs(r"(strip_\w+).in", 2):
             with self.subTest(name=fname):
                 ret, *_ = tester.test(["cat"], 1., 0, False, False,
-                                      f"test_codes/{fname}",
-                                      f"test_codes/{out_prefix}.out")
+                                      f"test_codes{sep}{fname}",
+                                      f"test_codes{sep}{out_prefix}.out")
                 self.assertEqual(ret, "WA")
 
     def test_strict(self):
         for _, fname, expected_ret in get_progs(r"(prog\w*_([A-Z]+)).py", 3):
             with self.subTest(name=fname):
-                prefix = f"test_codes/{fname}"
-                ret, *_ = tester.test(["python3", prefix+".py"], 1.,
+                prefix = f"test_codes{sep}{fname}"
+                ret, *_ = tester.test([executable, prefix+".py"], 1.,
                                       16*1024**2, False, False, prefix+".in",
                                       prefix+".out")
                 self.assertEqual(ret, expected_ret)
@@ -53,9 +57,9 @@ class TesterTest(unittest.TestCase):
     def test_list(self):
         testcases = testcase.TestCaseList()
         for _ in range(5):
-            testcases.add_case("test_codes/prog_AC.in",
-                               "test_codes/prog_AC.out")
-        with open("test_codes/prog_AC.py") as f:
+            testcases.add_case(f"test_codes{sep}prog_AC.in",
+                               f"test_codes{sep}prog_AC.out")
+        with open(f"test_codes{sep}prog_AC.py") as f:
             source_str = f.read()
             for ret, *_ in tester.test_list(source_str, testcases):
                 self.assertEqual(ret, "AC")
