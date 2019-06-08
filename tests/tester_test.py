@@ -12,7 +12,7 @@ def get_progs(exp, group_num):
     import re
     from os import scandir
     code_pattern = re.compile(exp)
-    with scandir("test_codes") as i:
+    with scandir("tests") as i:
         for f in i:
             if f.is_file():
                 fname = f.name
@@ -32,8 +32,8 @@ class TesterTest(unittest.TestCase):
         for fname, out_prefix in get_progs(r"(strip_\w+).in", 2):
             with self.subTest(name=fname):
                 ret, *_ = tester.test(["cat"], 1., 0, True, True,
-                                      f"test_codes{sep}{fname}",
-                                      f"test_codes{sep}{out_prefix}.out")
+                                      f"tests{sep}{fname}",
+                                      f"tests{sep}{out_prefix}.out")
                 self.assertEqual(ret, "AC")
 
     @unittest.skipIf(tester._mswindows, "skip MS Windows")
@@ -41,14 +41,14 @@ class TesterTest(unittest.TestCase):
         for fname, out_prefix in get_progs(r"(strip_\w+).in", 2):
             with self.subTest(name=fname):
                 ret, *_ = tester.test(["cat"], 1., 0, False, False,
-                                      f"test_codes{sep}{fname}",
-                                      f"test_codes{sep}{out_prefix}.out")
+                                      f"tests{sep}{fname}",
+                                      f"tests{sep}{out_prefix}.out")
                 self.assertEqual(ret, "WA")
 
     def test_strict(self):
         for _, fname, expected_ret in get_progs(r"(prog\w*_([A-Z]+)).py", 3):
             with self.subTest(name=fname):
-                prefix = f"test_codes{sep}{fname}"
+                prefix = f"tests{sep}{fname}"
                 ret, *_ = tester.test([executable, prefix+".py"], 1.,
                                       16*1024**2, False, False, prefix+".in",
                                       prefix+".out")
@@ -57,9 +57,9 @@ class TesterTest(unittest.TestCase):
     def test_list(self):
         testcases = testcase.TestCaseList()
         for _ in range(5):
-            testcases.add_case(f"test_codes{sep}prog_AC.in",
-                               f"test_codes{sep}prog_AC.out")
-        with open(f"test_codes{sep}prog_AC.py") as f:
+            testcases.add_case(f"tests{sep}prog_AC.in",
+                               f"tests{sep}prog_AC.out")
+        with open(f"tests{sep}prog_AC.py") as f:
             source_str = f.read()
             for ret, *_ in tester.test_list(source_str, testcases):
                 self.assertEqual(ret, "AC")
