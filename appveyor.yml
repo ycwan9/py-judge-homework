@@ -11,8 +11,8 @@ build: off
 
 install:
   - "%PYTHON%\\python.exe -m pip install pywin32"
-  - copy test_codes\prog_AC.in test_codes\prog_AC.out
+  - copy tests\prog_AC.in tests\prog_AC.out
 
 test_script:
-  - "%PYTHON%\\python.exe -m unittest discover"
+  - "%PYTHON%\\python.exe -m unittest discover tests"
 
