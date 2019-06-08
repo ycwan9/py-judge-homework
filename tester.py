@@ -152,7 +152,7 @@ def run_test(args, time_limit, mem_size, stdin_name, out_checker):
             else:
                 result = parse_err(err_msg)
             logger.debug("result: %s", result)
-    return result, time_elapsed, err_msg
+    return result, time_elapsed, err_msg.decode()
 
 
 def check(fout, ans, ignore_space, ignore_return):

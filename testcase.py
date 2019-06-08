@@ -61,4 +61,3 @@ class TestCaseList(UserList):
                 self.add_case("", fname)
         for fname in etc_files:
             self.add_case(fname, "")
-

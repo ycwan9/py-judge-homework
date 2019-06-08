@@ -32,8 +32,9 @@ class MainView(tk.Frame):
                                          command=self.cb_testcase)
         self.submit_button = tk.Button(self, text="提交",
                                        command=self.cb_submit)
-        self.clear_button = tk.Button(self, text="清空",
-            command=lambda : self.source_input.delete("1.0", tk.END))
+        self.clear_button = tk.Button(
+            self, text="清空",
+            command=lambda: self.source_input.delete("1.0", tk.END))
         self.source_input.grid(columnspan=3, stick=sticky_opts)
         self.testcase_button.grid(row=1, column=0)
         self.submit_button.grid(row=1, column=1)

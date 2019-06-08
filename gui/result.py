@@ -21,7 +21,8 @@ class ResultView(Dialog):
         self.resultdetail.pack(fill=tk.BOTH)
         for case_name, ret, time_len, err_msg in self.test_result:
             item_color = "blue" if ret == "AC" else "red"
-            self.resultlist.insert(tk.END, f"{ret} {time_len:0.3f}s {case_name}")
+            self.resultlist.insert(
+                tk.END, f"{ret} {time_len:0.3f}s {case_name}")
             self.resultlist.itemconfigure(tk.END, fg=item_color)
 
     def cb_list(self, event):
