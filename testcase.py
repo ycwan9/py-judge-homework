@@ -6,6 +6,16 @@ TestCase = namedtuple("TestCase", ("fin", "fout"))
 
 
 class TestCaseList(UserList):
+    """测试参数存储
+    在列表中存储作为测试点（TestCase 对象）
+
+    Attributes:
+        time_limit: float 类型，秒为单位的运行时间限制
+        mem_size: int，byte 为单位的运行内存限制，零值为不限制
+        ignore_space: bool，开关忽略行末空白
+        ignore_return: 同上，结尾空行
+    """
+
     def __init__(self, *args):
         super().__init__(*args)
         self.time_limit = 1.
@@ -22,15 +32,23 @@ class TestCaseList(UserList):
         return ins
 
     def set_fin(self, p, v):
+        """设置 self[p].fin 为 v"""
         self.data[p] = self.data[p]._replace(fin=v)
 
     def set_fout(self, p, v):
+        """设置 self[p].fout 为 v"""
         self.data[p] = self.data[p]._replace(fout=v)
 
     def add_case(self, finput, answer):
+        """添加单个测试点 TestCase(finput, answer)"""
         self.data.append(TestCase(finput, answer))
 
     def discover_and_add(self, file_list):
+        """根据测试文件列表自动扫描匹配并生成测试点
+
+        Args:
+            file_list: 包含输入文件的可迭代对象
+        """
         in_files = []
         out_files = set()
         etc_files = []

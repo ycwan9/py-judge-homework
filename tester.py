@@ -29,6 +29,19 @@ _mswindows = (sys.platform == "win32")
 
 def proc(args, time_limit, mem_size, time_elapsed, return_val, _stdin_name,
          _stdout_name, _stderr_name):
+    """测试的 runner 函数
+
+    Args:
+        args: 待测程序及其参数的列表
+        time_limit: float，秒为单位的运行时间限制
+        mem_size: int，byte 为单位的运行内存限制，零值为不限制
+        time_elapsed: double 类型的 multiprocessing 中的 shared_ctypes 对象
+            用以存储并返回实际运行时间
+        return_val: int 类型的 multiprocessing 中的 shared_ctypes 对象
+            用以存储并返回待测程序的返回值
+        _stdin_name, _stdout_name, _stderr_name: 为文件路径
+            分别为待测程序的标准输入、输出、错误输出的重定向目标
+    """
     if mem_size:
         try:
             if _mswindows:
@@ -89,6 +102,24 @@ def proc(args, time_limit, mem_size, time_elapsed, return_val, _stdin_name,
 
 def test(args, time_limit, mem_size, ignore_space, ignore_return,
          input_name, answer_name):
+    """对单个测试点运行测试
+    封装了 run_test
+
+    Args:
+        args: 待测程序及其参数的列表
+        time_limit: float，秒为单位的运行时间限制
+        mem_size: int，byte 为单位的运行内存限制，零值为不限制
+        ignore_space: bool，开关忽略行末空白
+        ignore_return: 同上，结尾空行
+        input_name: 输入文件
+        answer_name: 标准答案
+
+    Returns:
+        三元组 (result, time_elapsed, err_msg)
+        result: str，错误类型
+        time_elapsed: float，用时
+        err_msg: str，错误信息
+    """
     time_limit = float(time_limit)
     mem_size = int(mem_size)
     return run_test(args, time_limit, mem_size, input_name,
@@ -97,7 +128,17 @@ def test(args, time_limit, mem_size, ignore_space, ignore_return,
 
 
 def test_list(code_str, testcases: testcase.TestCaseList):
-    with NamedTemporaryFile("w", prefix="runner_", suffix=".py", delete=False) as fsource:
+    """对一个 TestCaseList 运行测试
+
+    Args:
+        code_str: 待测代码
+        testcases: 将要运行的 TestCaseList 对象
+
+    Returns:
+	    一个迭代器，包含 test 函数对于每个测试点返回的三元组
+    """
+    with NamedTemporaryFile("w", prefix="runner_", suffix=".py",
+                            delete=False) as fsource:
         fsource.write(code_str)
         script_name = fsource.name
     try:
@@ -118,6 +159,21 @@ def test_list(code_str, testcases: testcase.TestCaseList):
 
 
 def run_test(args, time_limit, mem_size, stdin_name, out_checker):
+    """对单个测试点运行测试
+
+    Args:
+        args: 待测程序及其参数的列表
+        time_limit: float，秒为单位的运行时间限制
+        mem_size: int，byte 为单位的运行内存限制，零值为不限制
+        stdin_name: 输入文件
+        out_checker: 答案比较器
+
+    Returns:
+        三元组 (result, time_elapsed, err_msg)
+        result: str，错误类型
+        time_elapsed: float，用时
+        err_msg: str，错误信息
+    """
     logger = _logger.getChild(f"test_{args[0]}")
     result = ""
     time_elapsed = .0
@@ -132,9 +188,10 @@ def run_test(args, time_limit, mem_size, stdin_name, out_checker):
         logger.debug("redirecting stderr to %s", stderr_name)
         for fn in stdout_name, stderr_name:
             open(fn, "a").close()
-        test_proc = mp.Process(target=proc,
-                               args=(args, time_limit, mem_size, mp_time, mp_return,
-                                     stdin_name, stdout_name, stderr_name))
+        test_proc = mp.Process(
+            target=proc,
+            args=(args, time_limit, mem_size, mp_time, mp_return,
+                  stdin_name, stdout_name, stderr_name))
         test_proc.start()
         test_proc.join()
         exit_status = mp_return.value
@@ -156,6 +213,14 @@ def run_test(args, time_limit, mem_size, stdin_name, out_checker):
 
 
 def check(fout, ans, ignore_space, ignore_return):
+    """检查输出
+
+    Args:
+        fout: file object, 待测程序的输出
+        ans: str，标准答案文件
+        ignore_space: bool，开关忽略行末空白
+        ignore_return: 同上，结尾空行
+    """
     ignore_chars = b"\r\n"
     if ignore_space:
         ignore_chars += b"\t "
@@ -169,6 +234,7 @@ def check(fout, ans, ignore_space, ignore_return):
 
 
 def parse_err(err_msg):
+    """从 stderr 输出中提取 Exception Name 并判断错误类型"""
     try:
         *_, err_line = filter(bool, err_msg.split(b"\n"))
         err_type = err_line.strip(b"\r").split(b":")[0]
