@@ -63,3 +63,12 @@ class TesterTest(unittest.TestCase):
             source_str = f.read()
             for ret, *_ in tester.test_list(source_str, testcases):
                 self.assertEqual(ret, "AC")
+
+    def test_suggested(self):
+        input_files = [f"tests{sep}{r[0]}"
+                       for r in get_progs(r"suggested_sum_\d+\.in", 1)]
+        testcases = testcase.TestCaseList()
+        testcases.discover_and_add(input_files)
+        for ret, *_ in tester.test_list("print(sum(range(int(input())+1)))",
+                                        testcases):
+            self.assertEqual(ret, "AC")
