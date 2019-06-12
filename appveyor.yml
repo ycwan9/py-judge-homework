@@ -10,7 +10,7 @@ environment:
 build: off
 
 install:
-  - "%PYTHON%\\python.exe -m pip install pywin32"
+  - "%PYTHON%\\python.exe -m pip install -r requirements.win32.txt"
   - copy tests\prog_AC.in tests\prog_AC.out
   - copy tests\prog_multiline_AC.in tests\prog_multiline_AC.out
 
